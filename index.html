@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f9ff">
+  <title>今日やること｜タスク管理</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232585ff'/%3E%3Cpath d='m17 33 10 10 21-24' fill='none' stroke='white' stroke-width='6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: light;
+      --blue: #2585ff;
+      --blue-dark: #0868ea;
+      --canvas: #f5f9ff;
+      --surface: #ffffff;
+      --text: #111827;
+      --muted: #6f7e95;
+      --done: #7b8799;
+      --border: #e7edf5;
+      --disabled-bg: #e5e9ef;
+      --disabled-text: #8590a1;
+      --danger: #ed474d;
+      --app-width: 480px;
+      --tab-height: 76px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans CJK JP", "Yu Gothic", Meiryo, sans-serif;
+      font-synthesis: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { min-width: 280px; background: #edf2f9; }
+    body { margin: 0; color: var(--text); font-size: 15px; line-height: 1.6; }
+    button, input { font: inherit; }
+    button { cursor: pointer; touch-action: manipulation; }
+    button:disabled { cursor: not-allowed; }
+    button, input { -webkit-tap-highlight-color: transparent; }
+    button:focus-visible, input:focus-visible, [tabindex]:focus-visible {
+      outline: 3px solid #096fe9; outline-offset: 3px;
+    }
+    button { -webkit-user-select: none; user-select: none; }
+    .icon { display: block; width: 22px; height: 22px; flex: 0 0 auto; }
+    .app {
+      position: relative; width: 100%; max-width: var(--app-width);
+      min-height: 100vh; min-height: 100dvh; margin: 0 auto;
+      background: linear-gradient(150deg, #f9fbff 0%, #f3f8fe 100%);
+    }
+    .screen {
+      min-height: 100vh; min-height: 100dvh;
+      padding: max(40px, env(safe-area-inset-top, 0px)) 20px calc(var(--tab-height) + var(--safe-bottom) + 110px);
+    }
+    .screen-header { margin-bottom: 24px; }
+    h1 { margin: 0 0 7px; font-size: 26px; font-weight: 750; line-height: 1.45; letter-spacing: -.045em; }
+    .header-meta { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 16px; }
+    .header-meta .list-total { color: #56657d; font-size: 14px; }
+    .today-count { white-space: nowrap; color: #364561; font-variant-numeric: tabular-nums; }
+    .count-label { margin-right: 7px; font-size: 13px; color: #596982; }
+    .count-current { color: var(--blue-dark); }
+    .count-full .count-current { color: #35415e; }
+    .is-list .count-full .count-current { color: var(--danger); }
+    .task-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+    .task-row {
+      position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr) auto;
+      align-items: center; gap: 3px; min-height: 68px; padding: 8px 7px;
+      background: var(--surface); border: 1px solid rgba(255,255,255,.9); border-radius: 12px;
+      box-shadow: 0 1px 2px rgba(45, 74, 110, .025);
+    }
+    .task-row.completed { background: linear-gradient(110deg, #f0f5fc, #eaf1fa); border-color: #ebf1f9; }
+    .check-wrap { width: 40px; min-height: 44px; display: grid; place-items: center; cursor: pointer; }
+    .completion-check {
+      appearance: none; -webkit-appearance: none; position: relative; margin: 0;
+      width: 21px; height: 21px; border: 1.7px solid #7c8ca5;
+      border-radius: 5px; background: #fff; cursor: pointer;
+    }
+    .completion-check:checked { background: var(--blue-dark); border-color: var(--blue-dark); }
+    .completion-check:checked::after {
+      content: ""; position: absolute; width: 6px; height: 11px; left: 6px; top: 2px;
+      border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+    .task-copy { min-width: 0; padding: 3px 0; line-height: 1.55; }
+    .task-name { font-size: 15px; font-weight: 500; overflow-wrap: anywhere; white-space: pre-wrap; }
+    .completed .task-name { text-decoration: line-through; text-decoration-thickness: 1px; color: var(--done); }
+    .today-badge {
+      display: inline-block; vertical-align: 1px; margin: 0 7px 0 0; padding: 1px 7px;
+      border-radius: 4px; background: var(--blue); color: #fff;
+      font-size: 12px; font-weight: 600; line-height: 1.65; white-space: nowrap;
+    }
+    .row-actions { display: flex; align-items: center; gap: 0; }
+    .icon-button {
+      display: grid; place-items: center; width: 36px; min-height: 44px;
+      padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted);
+    }
+    .icon-button .icon { width: 20px; height: 20px; }
+    .icon-button[aria-expanded="true"] { color: var(--blue-dark); background: #e8f1ff; }
+    .today-add {
+      display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+      min-height: 44px; padding: 0 9px; border: 0; border-radius: 8px;
+      background: var(--blue); color: #fff; font-size: 12px; font-weight: 500;
+      white-space: nowrap; box-shadow: inset 0 -1px 0 rgba(0,0,0,.04);
+    }
+    .today-add .icon { width: 14px; height: 14px; }
+    .today-add:disabled { background: var(--disabled-bg); color: var(--disabled-text); box-shadow: none; }
+    .empty-state { text-align: center; padding: 100px 12px 20px; color: var(--muted); }
+    .empty-state h2 { font-size: 17px; font-weight: 600; margin: 0 0 9px; color: #506078; }
+    .empty-state p { font-size: 14px; line-height: 1.9; margin: 0; }
+    .empty-link {
+      margin-top: 22px; min-height: 44px; padding: 8px 18px;
+      border: 1px solid #cbdfff; border-radius: 9px; background: #fff;
+      color: var(--blue-dark); font-size: 14px; font-weight: 600;
+    }
+    .fab {
+      position: fixed; z-index: 15;
+      right: max(22px, calc((100vw - var(--app-width)) / 2 + 22px));
+      bottom: calc(var(--tab-height) + var(--safe-bottom) + 20px);
+      width: 58px; height: 58px; display: grid; place-items: center;
+      border: 0; border-radius: 50%; background: var(--blue); color: #fff;
+      box-shadow: 0 4px 10px rgba(45, 118, 214, .24), inset 0 1px 1px rgba(255,255,255,.18);
+      transition: transform .12s ease, background-color .12s ease;
+    }
+    .fab .icon { width: 29px; height: 29px; }
+    .fab:active { transform: scale(.95); }
+    .fab:disabled { background: var(--disabled-bg); color: var(--disabled-text); box-shadow: none; }
+    .tab-bar {
+      position: fixed; z-index: 20; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: var(--app-width); display: grid; grid-template-columns: 1fr 1fr;
+      padding: 0 12px var(--safe-bottom); height: calc(var(--tab-height) + var(--safe-bottom));
+      background: rgba(255,255,255,.98); border-top: 1px solid var(--border);
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+      min-height: var(--tab-height); border: 0; background: transparent;
+      color: #7a879a; font-size: 12px; font-weight: 600;
+    }
+    .tab .icon { width: 25px; height: 25px; }
+    .tab[aria-selected="true"] { color: var(--blue-dark); }
+    .toast {
+      position: fixed; z-index: 60; left: 50%; transform: translateX(-50%);
+      bottom: calc(var(--tab-height) + var(--safe-bottom) + 90px);
+      width: max-content; max-width: min(360px, calc(100vw - 40px));
+      padding: 11px 17px; border-radius: 12px; background: #263449; color: #fff;
+      font-size: 13px; line-height: 1.65; box-shadow: 0 6px 20px rgba(0,0,0,.1); pointer-events: none;
+    }
+    .toast:empty { display: none; }
+    .storage-warning { margin: 0 0 20px; border: 1px solid #f2b9b9; background: #fff4f4; border-radius: 10px; padding: 12px; color: #982a30; font-size: 13px; }
+    .context-menu {
+      position: fixed; z-index: 40; min-width: 186px; max-width: calc(100vw - 24px);
+      padding: 6px; border: 1px solid #e3e9f1; border-radius: 12px; background: #fff;
+      box-shadow: 0 8px 28px rgba(26, 49, 78, .16);
+    }
+    .menu-item {
+      display: flex; align-items: center; gap: 9px; width: 100%; min-height: 48px;
+      padding: 10px 13px; border: 0; border-radius: 8px; background: #fff;
+      text-align: left; font-size: 14px; font-weight: 500; color: var(--text);
+    }
+    .menu-item .icon { width: 18px; height: 18px; }
+    .menu-item.remove { color: #fff; background: var(--danger); }
+    dialog {
+      width: min(350px, calc(100vw - 40px)); padding: 24px 20px 20px; border: 0;
+      border-radius: 16px; color: var(--text); background: #fff;
+      box-shadow: 0 20px 70px rgba(15, 23, 42, .22);
+      max-height: calc(100dvh - 32px); overflow-y: auto;
+    }
+    dialog::backdrop { background: rgba(20, 28, 40, .50); }
+    dialog h2 { margin: 0 0 20px; font-size: 19px; font-weight: 700; letter-spacing: -.02em; }
+    .field-label { display: block; margin-bottom: 6px; font-size: 13px; color: #59677d; }
+    .name-input {
+      width: 100%; min-width: 0; height: 50px; border: 1.5px solid #cbd5e3;
+      border-radius: 8px; background: #fff; padding: 10px 12px; color: var(--text); font-size: 16px;
+    }
+    .name-input::placeholder { color: #8b96a8; }
+    .name-input[aria-invalid="true"] { border-color: var(--danger); }
+    .field-error { color: #b32632; font-size: 13px; margin: 7px 0 0; }
+    .dialog-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 22px; }
+    .button { min-height: 48px; border: 0; border-radius: 9px; padding: 10px 12px; font-size: 15px; font-weight: 600; }
+    .button-primary { background: var(--blue); color: #fff; }
+    .button-secondary { background: #eff3f8; color: #202b3e; }
+    .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    noscript { display: block; max-width: 480px; padding: 24px; margin: auto; background: #fff4f4; color: #982a30; }
+    @media (hover: hover) {
+      .fab:not(:disabled):hover, .today-add:not(:disabled):hover, .button-primary:hover { background: var(--blue-dark); }
+      .icon-button:hover { background: #e8f1ff; color: var(--blue-dark); }
+      .empty-link:hover, .button-secondary:hover { background: #e4edfa; }
+    }
+    @media (max-width: 350px) {
+      .screen { padding-left: 14px; padding-right: 14px; }
+      .task-row { grid-template-columns: 34px minmax(0, 1fr) auto; padding-left: 4px; padding-right: 4px; }
+      .check-wrap { width: 34px; }
+      .task-name { font-size: 14px; }
+      .today-add { padding: 0 7px; font-size: 11px; }
+      .icon-button { width: 30px; }
+      h1 { font-size: 25px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <noscript>このアプリを使うには、ブラウザのJavaScriptを有効にしてください。</noscript>
+  <div class="app" id="app">
+    <main class="screen" id="screen" role="tabpanel" aria-labelledby="tab-today">
+      <div id="storage-warning" class="storage-warning" role="alert" hidden></div>
+      <header class="screen-header">
+        <h1 id="screen-title">今日やること</h1>
+        <div class="header-meta">
+          <span id="meta-label"></span>
+          <span id="today-count" class="today-count" aria-live="polite"></span>
+        </div>
+      </header>
+      <ul id="task-list" class="task-list" aria-label="今日のタスク"></ul>
+      <section id="empty-state" class="empty-state" hidden>
+        <h2 id="empty-title"></h2>
+        <p id="empty-description"></p>
+        <button id="choose-today" class="empty-link" type="button" hidden>一覧から選ぶ</button>
+      </section>
+    </main>
+    <button id="add-task" class="fab" type="button" aria-label="新しいタスクを追加" aria-haspopup="dialog" data-focus-key="add-task"></button>
+    <nav class="tab-bar" role="tablist" aria-label="画面切り替え">
+      <button class="tab" id="tab-today" type="button" role="tab" aria-selected="true" aria-controls="screen" data-view="today"><span class="tab-icon"></span><span>今日</span></button>
+      <button class="tab" id="tab-list" type="button" role="tab" aria-selected="false" aria-controls="screen" tabindex="-1" data-view="list"><span class="tab-icon"></span><span>一覧</span></button>
+    </nav>
+  </div>
+  <div id="task-menu" class="context-menu" role="menu" aria-label="タスクの操作" hidden></div>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <dialog id="task-dialog" aria-labelledby="dialog-title">
+    <form id="task-form" novalidate>
+      <h2 id="dialog-title">新しいタスクを追加</h2>
+      <label class="field-label" for="task-name">タスク名</label>
+      <input class="name-input" id="task-name" name="name" type="text" placeholder="タスク名を入力" autocomplete="off" aria-describedby="name-error" autofocus>
+      <p class="field-error" id="name-error" role="alert" hidden></p>
+      <p class="field-error" id="save-error" role="alert" hidden></p>
+      <div class="dialog-actions">
+        <button class="button button-secondary" id="cancel-task" type="button">キャンセル</button>
+        <button class="button button-primary" id="save-task" type="submit">追加</button>
+      </div>
+    </form>
+  </dialog>
+  <script>
+    (() => {
+      'use strict';
+      // One file, no dependencies, no network requests. See requirements.md for provisional choices.
+      const STORAGE_KEY = 'today-three.tasks.v1';
+      const LIMIT = 3;
+      const $ = (id) => document.getElementById(id);
+      const els = {
+        screen: $('screen'), title: $('screen-title'), meta: $('meta-label'), count: $('today-count'),
+        list: $('task-list'), empty: $('empty-state'), emptyTitle: $('empty-title'), emptyDescription: $('empty-description'),
+        choose: $('choose-today'), add: $('add-task'), warning: $('storage-warning'),
+        menu: $('task-menu'), toast: $('toast'), dialog: $('task-dialog'), form: $('task-form'),
+        dialogTitle: $('dialog-title'), input: $('task-name'), nameError: $('name-error'),
+        saveError: $('save-error'), save: $('save-task'), cancel: $('cancel-task')
+      };
+      const icons = {
+        plus: '<path d="M12 5v14M5 12h14"/>',
+        more: '<circle cx="4" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="20" cy="12" r="1.7" fill="currentColor" stroke="none"/>',
+        home: '<path d="M2.5 10.5 12 2.8l9.5 7.7-1.9 2.2-1.1-.9V21h-4.8v-6H10v6H5.5v-9.2l-1.1.9Z" fill="currentColor" stroke="none"/>',
+        list: '<path d="M9 5h12M9 12h12M9 19h12"/><circle cx="3" cy="5" r="1.65" fill="currentColor" stroke="none"/><circle cx="3" cy="12" r="1.65" fill="currentColor" stroke="none"/><circle cx="3" cy="19" r="1.65" fill="currentColor" stroke="none"/>',
+        edit: '<path d="m14.5 5.5 4 4M4 20l4.5-1 12-12a2.8 2.8 0 0 0-4-4l-12 12L4 20Z"/>',
+        remove: '<path d="M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7"/>'
+      };
+      function icon(name) {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor');
+        svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round');
+        svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        svg.classList.add('icon');
+        // Only fixed application-owned SVG markup is used, never task text.
+        svg.innerHTML = icons[name];
+        return svg;
+      }
+      els.add.append(icon('plus'));
+      $('tab-today').querySelector('.tab-icon').append(icon('home'));
+      $('tab-list').querySelector('.tab-icon').append(icon('list'));
+
+      // Use the device's LOCAL calendar date, not UTC's date in toISOString().
+      function localDateKey(date = new Date()) {
+        return [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-');
+      }
+      function emptyState() { return { version: 1, tasks: [], today: { date: localDateKey(), taskIds: [] } }; }
+      let state = emptyState();
+      let view = 'today';
+      let storageBroken = false;
+      let hasSavedData = false;
+      let editingId = null;
+      let dialogReturnKey = 'add-task';
+      let menuReturnKey = null;
+      let toastTimer;
+      let midnightTimer;
+      const scrollPositions = { today: 0, list: 0 };
+
+      function showWarning(message) { els.warning.textContent = message; els.warning.hidden = !message; }
+      function toast(message) {
+        clearTimeout(toastTimer);
+        els.toast.textContent = message;
+        toastTimer = setTimeout(() => { els.toast.textContent = ''; }, 3500);
+      }
+      function validState(data) {
+        if (!data || data.version !== 1 || !Array.isArray(data.tasks) || !data.today ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(data.today.date) || !Array.isArray(data.today.taskIds)) return false;
+        const ids = new Set();
+        for (const task of data.tasks) {
+          if (!task || typeof task.id !== 'string' || !task.id || ids.has(task.id) ||
+              typeof task.name !== 'string' || !task.name.trim() || typeof task.completed !== 'boolean' ||
+              typeof task.createdAt !== 'string' || !Number.isFinite(Date.parse(task.createdAt))) return false;
+          ids.add(task.id);
+        }
+        return data.today.taskIds.length <= LIMIT &&
+          new Set(data.today.taskIds).size === data.today.taskIds.length &&
+          data.today.taskIds.every(id => typeof id === 'string' && ids.has(id));
+      }
+      function load() {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          if (saved === null) return;
+          const parsed = JSON.parse(saved);
+          if (!validState(parsed)) throw new Error('Invalid saved data');
+          state = parsed;
+          hasSavedData = true;
+        } catch (_) {
+          // Never silently replace unreadable user data with an empty document.
+          storageBroken = true;
+          showWarning('保存データを読み込めませんでした。元のデータは変更していません。ブラウザの保存設定を確認し、開き直してください。');
+        }
+      }
+      function persist(candidate) {
+        if (storageBroken) return false;
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(candidate));
+          hasSavedData = true;
+          showWarning('');
+          return true;
+        } catch (_) {
+          showWarning('ブラウザに保存できませんでした。タスクの変更は反映していません。保存容量やブラウザの設定を確認して、もう一度お試しください。');
+          return false;
+        }
+      }
+      function cloneState() { return JSON.parse(JSON.stringify(state)); }
+      function checkDate(notify = false) {
+        const date = localDateKey();
+        if (state.today.date === date) return false;
+        const hadSelection = state.today.taskIds.length > 0;
+        // Only the selection is reset. Tasks, completion and their list order survive.
+        state.today = { date, taskIds: [] };
+        if (hasSavedData && !storageBroken && !persist(state)) {
+          showWarning('日付が変わったため今日の選択を解除しましたが、保存できませんでした。タスク本体は元の保存データに残っています。');
+        }
+        closeMenu(false);
+        render();
+        if (notify && hadSelection) toast('日付が変わりました。今日の選択をリセットしました。');
+        return true;
+      }
+      function commit(change) {
+        if (storageBroken) return false;
+        checkDate();
+        const next = cloneState();
+        if (change(next) === false) return false;
+        if (!persist(next)) return false;
+        state = next;
+        render();
+        return true;
+      }
+      function makeId() {
+        let id;
+        do {
+          id = globalThis.crypto?.randomUUID?.() || ('task-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+        } while (state.tasks.some(task => task.id === id));
+        return id;
+      }
+      function restoreFocus(key) {
+        if (!key) return;
+        const target = Array.from(document.querySelectorAll('[data-focus-key]')).find(node => node.dataset.focusKey === key);
+        target?.focus({ preventScroll: true });
+      }
+      function rowFor(task) {
+        const isToday = state.today.taskIds.includes(task.id);
+        const row = document.createElement('li');
+        row.className = 'task-row' + (task.completed ? ' completed' : '');
+        row.dataset.taskId = task.id;
+        const checkWrap = document.createElement('label');
+        checkWrap.className = 'check-wrap';
+        const check = document.createElement('input');
+        check.className = 'completion-check';
+        check.type = 'checkbox';
+        check.checked = task.completed;
+        check.disabled = storageBroken;
+        check.dataset.action = 'complete';
+        check.dataset.focusKey = 'check-' + task.id;
+        check.setAttribute('aria-label', task.name + (task.completed ? 'を未完了に戻す' : 'を完了にする'));
+        checkWrap.append(check);
+        const copy = document.createElement('div');
+        copy.className = 'task-copy';
+        if (view === 'list' && isToday) {
+          const badge = document.createElement('span');
+          badge.className = 'today-badge';
+          badge.textContent = '今日';
+          badge.setAttribute('aria-label', '今日のリストに選択済み');
+          copy.append(badge);
+        }
+        const name = document.createElement('span');
+        name.className = 'task-name';
+        name.textContent = task.name;
+        copy.append(name);
+        const actions = document.createElement('div');
+        actions.className = 'row-actions';
+        if (view === 'list' && !isToday) {
+          const add = document.createElement('button');
+          add.type = 'button';
+          add.className = 'today-add';
+          add.dataset.action = 'select';
+          add.dataset.focusKey = 'select-' + task.id;
+          // The single capacity rule governs EVERY unselected row, including completed tasks.
+          add.disabled = storageBroken || state.today.taskIds.length >= LIMIT;
+          add.append(icon('plus'), document.createTextNode('今日に追加'));
+          add.setAttribute('aria-label', task.name + 'を今日に追加');
+          if (add.disabled) add.title = '今日の3件が埋まっています。今日のリストから1件外すと追加できます。';
+          actions.append(add);
+        }
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'icon-button';
+        more.dataset.action = 'menu';
+        more.dataset.focusKey = 'menu-' + task.id;
+        more.setAttribute('aria-label', task.name + 'のメニュー');
+        more.setAttribute('aria-haspopup', 'menu');
+        more.setAttribute('aria-expanded', 'false');
+        more.append(icon('more'));
+        actions.append(more);
+        row.append(checkWrap, copy, actions);
+        return row;
+      }
+      function render() {
+        const focusKey = document.activeElement?.dataset?.focusKey;
+        const isList = view === 'list';
+        els.screen.classList.toggle('is-list', isList);
+        els.screen.setAttribute('aria-labelledby', isList ? 'tab-list' : 'tab-today');
+        els.title.textContent = isList ? 'すべてのタスク' : '今日やること';
+        document.title = els.title.textContent + '｜タスク管理';
+        const now = new Date();
+        els.meta.textContent = isList ? state.tasks.length + '件' :
+          (now.getMonth() + 1) + '月' + now.getDate() + '日 (' + '日月火水木金土'[now.getDay()] + ')';
+        els.meta.className = isList ? 'list-total' : '';
+        const count = state.today.taskIds.length;
+        els.count.className = 'today-count' + (count >= LIMIT ? ' count-full' : '');
+        els.count.setAttribute('aria-label', '今日の選択 ' + count + '件、上限3件。完了分を含みます。');
+        els.count.replaceChildren();
+        if (isList) {
+          const label = document.createElement('span'); label.className = 'count-label'; label.textContent = '今日';
+          els.count.append(label);
+        }
+        const current = document.createElement('span'); current.className = 'count-current'; current.textContent = count;
+        els.count.append(current, document.createTextNode(' / 3'));
+        const byId = new Map(state.tasks.map(task => [task.id, task]));
+        const tasks = isList ? state.tasks : state.today.taskIds.map(id => byId.get(id)).filter(Boolean);
+        els.list.setAttribute('aria-label', isList ? 'すべてのタスク' : '今日のタスク');
+        els.list.replaceChildren(...tasks.map(rowFor));
+        els.empty.hidden = tasks.length > 0;
+        els.choose.hidden = isList || state.tasks.length === 0;
+        if (!tasks.length) {
+          if (!state.tasks.length) {
+            els.emptyTitle.textContent = 'まだタスクがありません';
+            els.emptyDescription.textContent = '右下の＋から、思いついたことを追加しましょう。';
+          } else {
+            els.emptyTitle.textContent = '今日やることを選びましょう';
+            els.emptyDescription.textContent = '一覧から、最大3件まで選べます。';
+          }
+        }
+        els.add.disabled = storageBroken;
+        document.querySelectorAll('.tab').forEach(tab => {
+          const selected = tab.dataset.view === view;
+          tab.setAttribute('aria-selected', String(selected));
+          tab.tabIndex = selected ? 0 : -1;
+        });
+        if (!els.dialog.open) restoreFocus(focusKey);
+      }
+      function switchView(nextView) {
+        if (nextView !== 'today' && nextView !== 'list') return;
+        checkDate();
+        if (view === nextView) return;
+        scrollPositions[view] = window.scrollY;
+        closeMenu(false);
+        view = nextView;
+        render();
+        window.scrollTo({ top: scrollPositions[view], behavior: 'instant' });
+      }
+      function clearFormErrors() {
+        els.nameError.hidden = true; els.nameError.textContent = '';
+        els.saveError.hidden = true; els.saveError.textContent = '';
+        els.input.removeAttribute('aria-invalid');
+      }
+      function openEditor(id = null) {
+        checkDate();
+        if (storageBroken) return;
+        const task = id ? state.tasks.find(item => item.id === id) : null;
+        if (id && !task) return;
+        editingId = id;
+        dialogReturnKey = id ? 'menu-' + id : 'add-task';
+        closeMenu(false);
+        els.dialogTitle.textContent = id ? 'タスク名を編集' : '新しいタスクを追加';
+        els.save.textContent = id ? '保存' : '追加';
+        els.input.value = task?.name || '';
+        clearFormErrors();
+        els.dialog.showModal();
+        els.input.focus();
+        if (id) els.input.select();
+      }
+      function closeEditor() { els.dialog.close(); }
+      els.dialog.addEventListener('close', () => {
+        clearFormErrors();
+        els.input.value = '';
+        editingId = null;
+        restoreFocus(dialogReturnKey);
+      });
+      els.form.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const name = els.input.value.trim();
+        if (!name) {
+          els.nameError.textContent = 'タスク名を入力してください';
+          els.nameError.hidden = false;
+          els.input.setAttribute('aria-invalid', 'true');
+          els.input.focus();
+          return;
+        }
+        const isEdit = editingId !== null;
+        const saved = commit(next => {
+          if (isEdit) {
+            const task = next.tasks.find(item => item.id === editingId);
+            if (!task) return false;
+            task.name = name;
+          } else {
+            next.tasks.push({ id: makeId(), name, completed: false, createdAt: new Date().toISOString() });
+          }
+        });
+        if (saved) {
+          closeEditor();
+          toast(isEdit ? 'タスク名を変更しました。' : (view === 'today' ? '一覧にタスクを追加しました。' : 'タスクを追加しました。'));
+        } else {
+          els.saveError.textContent = '保存できませんでした。入力内容は残っています。ブラウザの保存設定を確認してください。';
+          els.saveError.hidden = false;
+        }
+      });
+      // Do not submit while the Japanese IME is confirming a composition.
+      els.input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' && (event.isComposing || event.keyCode === 229)) event.preventDefault();
+      });
+      els.input.addEventListener('input', clearFormErrors);
+      els.cancel.addEventListener('click', closeEditor);
+      // Keep the keyboard focus inside the modal, including the last-to-first step.
+      els.dialog.addEventListener('keydown', event => {
+        if (event.key !== 'Tab') return;
+        const controls = Array.from(els.dialog.querySelectorAll('input:not([disabled]), button:not([disabled])'));
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault(); last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault(); first?.focus();
+        }
+      });
+      els.dialog.addEventListener('click', event => {
+        if (event.target !== els.dialog) return;
+        const rect = els.dialog.getBoundingClientRect();
+        if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) closeEditor();
+      });
+      function closeMenu(restore = true) {
+        if (els.menu.hidden) return;
+        els.menu.hidden = true;
+        document.querySelectorAll('[aria-expanded="true"]').forEach(node => node.setAttribute('aria-expanded', 'false'));
+        if (restore) restoreFocus(menuReturnKey);
+        menuReturnKey = null;
+      }
+      function openMenu(taskId, anchor) {
+        const alreadyOpen = !els.menu.hidden && menuReturnKey === anchor.dataset.focusKey;
+        closeMenu(false);
+        if (alreadyOpen) return;
+        menuReturnKey = anchor.dataset.focusKey;
+        anchor.setAttribute('aria-expanded', 'true');
+        els.menu.replaceChildren();
+        const item = document.createElement('button');
+        item.type = 'button'; item.className = 'menu-item'; item.setAttribute('role', 'menuitem');
+        if (view === 'today') {
+          item.classList.add('remove');
+          item.append(icon('remove'), document.createTextNode('今日のリストから外す'));
+          item.addEventListener('click', () => {
+            closeMenu(false);
+            if (commit(next => { next.today.taskIds = next.today.taskIds.filter(id => id !== taskId); })) {
+              toast('今日のリストから外しました。タスクは一覧に残っています。');
+              els.add.focus({ preventScroll: true });
+            }
+          });
+        } else {
+          item.append(icon('edit'), document.createTextNode('名前を編集'));
+          item.addEventListener('click', () => openEditor(taskId));
+        }
+        els.menu.append(item);
+        els.menu.hidden = false;
+        const rect = anchor.getBoundingClientRect();
+        const width = els.menu.offsetWidth;
+        const height = els.menu.offsetHeight;
+        const appRect = $('app').getBoundingClientRect();
+        els.menu.style.left = Math.max(appRect.left + 12, Math.min(rect.right - width, appRect.right - width - 12)) + 'px';
+        const bottomLimit = window.innerHeight - 86;
+        const top = rect.bottom + 5 + height <= bottomLimit ? rect.bottom + 5 : rect.top - height - 5;
+        els.menu.style.top = Math.max(12, top) + 'px';
+        item.focus({ preventScroll: true });
+      }
+      els.list.addEventListener('change', event => {
+        const check = event.target.closest('.completion-check');
+        if (!check) return;
+        const id = check.closest('.task-row').dataset.taskId;
+        const completed = check.checked;
+        const saved = commit(next => {
+          const task = next.tasks.find(item => item.id === id);
+          if (!task) return false;
+          task.completed = completed;
+        });
+        if (!saved) render();
+        else toast(completed ? '完了にしました。' : '未完了に戻しました。');
+      });
+      els.list.addEventListener('click', event => {
+        const button = event.target.closest('button[data-action]');
+        if (!button) return;
+        const id = button.closest('.task-row').dataset.taskId;
+        if (button.dataset.action === 'menu') {
+          if (checkDate()) return;
+          openMenu(id, button);
+        }
+        if (button.dataset.action === 'select') {
+          const saved = commit(next => {
+            if (next.today.taskIds.includes(id)) return false;
+            if (next.today.taskIds.length >= LIMIT) { toast('今日に選べるタスクは3件までです。'); return false; }
+            if (!next.tasks.some(task => task.id === id)) return false;
+            next.today.taskIds.push(id);
+          });
+          if (saved) {
+            restoreFocus('menu-' + id);
+            toast('今日のリストに追加しました。');
+          }
+        }
+      });
+      els.add.addEventListener('click', () => openEditor());
+      els.choose.addEventListener('click', () => { switchView('list'); $('tab-list').focus({ preventScroll: true }); });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => switchView(tab.dataset.view));
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          const next = event.key === 'Home' ? 'today' : event.key === 'End' ? 'list' : view === 'today' ? 'list' : 'today';
+          switchView(next); $('tab-' + next).focus();
+        });
+      });
+      document.addEventListener('click', event => {
+        if (!els.menu.hidden && !els.menu.contains(event.target) && !event.target.closest('[data-action="menu"]')) closeMenu(false);
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && !els.menu.hidden) { event.preventDefault(); closeMenu(); }
+        if (event.key === 'Tab' && !els.menu.hidden) closeMenu(false);
+      });
+      window.addEventListener('resize', () => closeMenu());
+      window.addEventListener('scroll', () => closeMenu(false), { passive: true });
+      function scheduleMidnight() {
+        clearTimeout(midnightTimer);
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        midnightTimer = setTimeout(() => { checkDate(true); scheduleMidnight(); }, Math.max(50, next.getTime() - now.getTime() + 50));
+      }
+      function resume() { checkDate(true); scheduleMidnight(); }
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) resume(); });
+      window.addEventListener('focus', resume);
+      window.addEventListener('pageshow', resume);
+      // Also catch device clock / timezone changes. No background service is required.
+      setInterval(() => { if (!document.hidden && checkDate(true)) scheduleMidnight(); }, 60000);
+      // Reflect other tabs of this same browser/origin; this is not device synchronization.
+      window.addEventListener('storage', event => {
+        if (event.key !== STORAGE_KEY && event.key !== null) return;
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          const next = raw === null ? emptyState() : JSON.parse(raw);
+          if (!validState(next)) throw new Error('Invalid saved data');
+          state = next; hasSavedData = raw !== null; storageBroken = false;
+          showWarning(''); closeMenu(false); checkDate(); render();
+        } catch (_) {
+          storageBroken = true;
+          showWarning('別のタブで保存データが変更され、読み込めませんでした。元のデータを保護するため編集を停止しています。');
+          render();
+        }
+      });
+      load();
+      checkDate();
+      render();
+      scheduleMidnight();
+    })();
+  </script>
+</body>
+</html>
